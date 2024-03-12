@@ -68,12 +68,12 @@ const productSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["Draft", "Published", "Inactive", "Sold"], // Assuming limited statuses
+      enum: ["Draft", "Active", "Inactive", "Sold", "Auction"], // Assuming limited statuses
       required: true,
     },
     sellerId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Seller", // Reference to a Seller model
+      ref: "Users", // Reference to a Seller model
     },
     totalLikes: {
       type: Number,

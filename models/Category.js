@@ -6,6 +6,10 @@ const categorySchema = new Schema(
       type: String,
       required: true,
     },
+    slug: {
+      type: String,
+      required: true,
+    },
     parent: {
       type: Schema.Types.ObjectId,
       ref: "Category",

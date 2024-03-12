@@ -58,7 +58,7 @@ export const duplicatePress = async (req, res) => {
       ...pressFields,
       title: `${pressFields.title} (Copy)`,
       slug: newSlug,
-      status: "Draft"
+      status: "Draft",
     });
 
     res.status(201).json(newPress);
@@ -72,7 +72,7 @@ export const getAllPress = async (req, res) => {
   try {
     const allPress = await Press.find().sort({ createdAt: -1 }).populate({
       path: "image",
-      select: "-userType -user -_id", // Exclude userType, user, and _id fields
+      select: "-userType -user  -updated  -updatedAt  -originalname",
     });
     res.status(200).json(allPress);
   } catch (error) {
@@ -82,11 +82,31 @@ export const getAllPress = async (req, res) => {
 
 export const getAllPublishedPress = async (req, res) => {
   try {
-    const allPress = await Press.find({ status: "Published" }).populate({
-      path: "image",
-      select: "-userType -user -_id", // Exclude userType, user, and _id fields
-    });
-    res.status(200).json(allPress);
+    const { page = 1, limit = 10, sortBy } = req.query;
+
+    const options = {
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      populate: {
+        path: "image",
+        select: "-userType -user   -updated  -updatedAt -size ",
+      },
+    };
+
+    if (sortBy) {
+      if (sortBy === "NF") {
+        options.sort = { createdAt: -1 };
+      } else if (sortBy === "OF") {
+        options.sort = { createdAt: 1 };
+      }
+    } else {
+      options.sort = { createdAt: -1 };
+    }
+    const query = { status: "Published" };
+
+    const result = await Press.paginate(query, options);
+
+    res.status(200).json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -96,7 +116,7 @@ export const getPressById = async (req, res) => {
   try {
     const press = await Press.findOne({ slug: req.params.id }).populate({
       path: "image",
-      select: "-userType -user -_id", // Exclude userType, user, and _id fields
+      select: "-userType -user  -updated  -updatedAt  ",
     });
     if (!press) {
       res.status(201).json({ message: "Press not found" });

@@ -5,8 +5,7 @@ export async function getAllSettings(req, res) {
     const settings = await Settings.find()
       .populate({
         path: "image",
-        select:
-          "-userType -user -extension -updated -createdAt -updatedAt -size -originalname", // Exclude userType, user, and _id fields
+        select: "-userType -user  -updated  -updatedAt  ", // Exclude userType, user, and _id fields
       })
       .sort({ createdAt: -1 });
     res.json(settings);

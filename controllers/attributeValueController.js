@@ -57,6 +57,69 @@ export const getAttributeValueByCatId = async (req, res) => {
   }
 };
 
+export const getAttributeValueByCatIdCount = async (req, res) => {
+  const { questionId } = req.params;
+
+  try {
+    const faqQuestion = await AttributeValue.aggregate([
+      {
+        $match: { category: new mongoose.Types.ObjectId(questionId) },
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "brand", // Assuming there's a field in the Product model referencing attributes
+          as: "productCount",
+        },
+      },
+      {
+        $unwind: {
+          path: "$productCount",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $match: { "productCount.status": "Active" },
+      },
+      {
+        $group: {
+          _id: "$_id",
+          category: { $first: "$category" }, // Keep the category field
+          title: { $first: "$title" }, // Keep the category field
+          slug: { $first: "$slug" }, // Keep the category field
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          // Include the fields you want in the final result
+          _id: 1,
+          category: 1,
+          slug: 1,
+          title: 1,
+          count: 1,
+        },
+      },
+      {
+        $sort: {
+          position: 1,
+        },
+      },
+    ]);
+
+    if (!faqQuestion) {
+      return res.status(404).json({ message: "Question not found" });
+    }
+
+    return res.status(200).json({ faqQuestion });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Failed to fetch FAQ question", error: error.message });
+  }
+};
+
 export const createAttributeValue = async (req, res) => {
   const { title, desc, category } = req.body;
 

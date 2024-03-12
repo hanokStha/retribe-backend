@@ -23,6 +23,10 @@ const serviceSchema = new Schema(
       type: String,
       required: true,
     },
+    button: {
+      type: String,
+      required: true,
+    },
     status: {
       type: String,
       enum: ["Draft", "Published"], // Enum to specify the possible types

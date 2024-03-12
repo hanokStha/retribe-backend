@@ -1,10 +1,26 @@
 import mongoose from "mongoose";
+import slugify from "slugify";
 import Category from "../models/Category.js";
 const { ObjectId } = mongoose.Types;
 
 export const createCategory = async (req, res) => {
   try {
     const { title, parent } = req.body;
+    const baseSlug = slugify(title, { lower: true }); // Generate base slug from title
+    let slug = baseSlug;
+    let suffix = 1;
+
+    while (true) {
+      const existingPress = await Category.findOne({ slug });
+      if (!existingPress) {
+        break;
+      } else {
+        // If slug already exists, increment suffix and generate new slug
+        suffix++;
+        slug = `${baseSlug}-${suffix}`;
+      }
+    }
+
     let newPosition = 1; // Set default position as 1
 
     if (!parent) {
@@ -35,6 +51,7 @@ export const createCategory = async (req, res) => {
       title,
       parent,
       position: newPosition,
+      slug,
     });
     res.status(201).json(category);
   } catch (err) {
@@ -45,6 +62,22 @@ export const createCategory = async (req, res) => {
 export const getAllCategories = async (req, res) => {
   try {
     const categories = await Category.find()
+      .populate({
+        path: "parent",
+        populate: {
+          path: "parent",
+        },
+      })
+      .sort({ createdAt: -1 });
+    res.status(200).json(categories);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getAllParentCategories = async (req, res) => {
+  try {
+    const categories = await Category.find({ parent: null })
       .populate({
         path: "parent",
         populate: {
@@ -76,13 +109,41 @@ export const getCategoryById = async (req, res) => {
   }
 };
 
+export const getCategoryBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const category = await Category.findOne({ slug });
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+    res.status(200).json(category);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 export const updateCategoryById = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, parent } = req.body;
+    const baseSlug = slugify(title, { lower: true }); // Generate base slug from title
+    let slug = baseSlug;
+    let suffix = 1;
+
+    while (true) {
+      const existingPress = await Category.findOne({ slug });
+      if (!existingPress) {
+        break;
+      } else {
+        // If slug already exists, increment suffix and generate new slug
+        suffix++;
+        slug = `${baseSlug}-${suffix}`;
+      }
+    }
+
     const updatedCategory = await Category.findByIdAndUpdate(
       id,
-      { title, parent },
+      { title, parent, slug },
       { new: true }
     );
     if (!updatedCategory) {
@@ -134,6 +195,7 @@ export const getCategoriesWithNestedSubcategories = async (req, res) => {
       // Recursively build the nested structure for each subcategory
       return subcategories.map((subcategory) => ({
         _id: subcategory._id,
+        slug: subcategory.slug,
         title: subcategory.title,
         position: subcategory.position,
         subcategory: buildHierarchy(subcategory._id),
@@ -241,3 +303,41 @@ export const updateCategoryPositions = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const getParentList = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const categories = await Category.find()
+      .populate({
+        path: "parent",
+        populate: {
+          path: "parent",
+        },
+      })
+      .sort({ createdAt: -1 });
+    const parentData = getParentCategories(id, categories);
+    res.status(200).json(parentData);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+function getParentCategories(selectedCategoryId, apiData) {
+  const parentCategories = [];
+  // Find the selected category in the API data
+  const selectedCategory = apiData.find(
+    (category) => category._id.toString() === selectedCategoryId
+  );
+  // If the selected category is found, traverse its parents and collect information
+  if (selectedCategory) {
+    let currentCategory = selectedCategory;
+    while (currentCategory.parent) {
+      parentCategories.unshift({
+        _id: currentCategory.parent._id,
+        title: currentCategory.parent.title,
+      });
+      currentCategory = currentCategory.parent;
+    }
+  }
+
+  return parentCategories;
+}

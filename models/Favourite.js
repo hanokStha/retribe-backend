@@ -13,7 +13,15 @@ const favouriteSchema = new Schema(
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Users",
+    },
+    ratings: {
+      type: Number,
+      default: 0,
+    },
+    productCount: {
+      type: Number,
+      default: 0,
     },
   },
   {

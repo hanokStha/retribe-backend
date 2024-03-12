@@ -6,6 +6,7 @@ import {
   deleteAttributeValue,
   getAllAttributeValues,
   getAttributeValueByCatId,
+  getAttributeValueByCatIdCount,
   getAttributeValueById,
   updateAttributeValue,
   updatePosition,
@@ -19,6 +20,7 @@ router.get("/value", getAllAttributeValues);
 // GET a specific FAQ question by ID
 router.get("/value/:questionId", getAttributeValueById);
 router.get("/value/cat/:questionId", getAttributeValueByCatId);
+router.get("/value/cat/count/:questionId", getAttributeValueByCatIdCount);
 
 // POST create a new FAQ question
 router.post("/value", verifyTokenMiddleware, isAdmin, createAttributeValue);

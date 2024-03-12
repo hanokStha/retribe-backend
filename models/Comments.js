@@ -1,29 +1,33 @@
-import { Schema, model } from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
 
 const commentSchema = new Schema(
   {
     text: {
       type: String,
-      required: true,
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // Reference to the User model, replace with your actual User model name
+      ref: "Users", // Reference to the User model, replace with your actual User model name
       required: true,
     },
-    replies: [
-      {
-        text: {
-          type: String,
-          required: true,
-        },
-        user: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User", // Reference to the User model for the reply author
-          required: true,
-        },
-      },
-    ],
+    seller: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Users",
+    },
+    automatic: {
+      type: Boolean,
+      default: false,
+    },
+    isActive: {
+      type: Boolean,
+    },
+
+    reply: {
+      type: String,
+    },
+    rating: {
+      type: Number,
+    },
   },
   {
     timestamps: true,

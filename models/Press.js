@@ -1,4 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
+import mongoosePaginate from "mongoose-paginate-v2";
 
 const pressSchema = new Schema(
   {
@@ -33,5 +34,7 @@ const pressSchema = new Schema(
     timestamps: true,
   }
 );
+
+pressSchema.plugin(mongoosePaginate);
 
 export default model("Press", pressSchema);

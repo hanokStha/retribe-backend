@@ -3,7 +3,26 @@ import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import hbs from "nodemailer-express-handlebars";
 import { handlebarOptions, transporter } from "../config/transporter.js";
+import slugify from "slugify";
+import Product from "../models/Product.js";
+import Comments from "../models/Comments.js";
+import Orders from "../models/Orders.js";
+import Favourite from "../models/Favourite.js";
 
+function calculateRoundedAverageRating(reviews) {
+  if (!reviews || reviews.length === 0) {
+    // Handle case with no reviews
+    return 0;
+  }
+
+  const totalStars = reviews.reduce((sum, review) => sum + review.rating, 0);
+  const averageRating = totalStars / reviews.length;
+
+  // Round the average rating to the closest star or half star
+  const roundedRating = Math.round(averageRating * 4) / 4;
+
+  return roundedRating;
+}
 export async function userRegister(req, res) {
   try {
     const generatedOTP = Math.floor(100000 + Math.random() * 900000); // 6-digit OTP
@@ -28,10 +47,26 @@ export async function userRegister(req, res) {
     // Hash the password
     const hashedPassword = await hash(req.body.password, 10);
 
+    const baseSlug = slugify(req.body.name, { lower: true }); // Generate base slug from title
+    let slug = baseSlug;
+    let suffix = 1;
+
+    while (true) {
+      const existingPress = await User.findOne({ slug });
+      if (!existingPress) {
+        break;
+      } else {
+        // If slug already exists, increment suffix and generate new slug
+        suffix++;
+        slug = `${baseSlug}-${suffix}`;
+      }
+    }
+
     // Create a new User
     const newUser = new User({
       name: req.body.name,
       email: req.body.email,
+      slug: slug,
       password: hashedPassword,
       default_image: "/images/profile_user.png",
       otp: generatedOTP,
@@ -88,11 +123,11 @@ export async function updateUser(req, res) {
     if (req.body.name) {
       user.name = req.body.name;
     }
-    if (req.body.email) {
-      user.email = req.body.email;
-    }
     if (req.body.email !== user.email) {
       user.emailVerified = false;
+    }
+    if (req.body.email) {
+      user.email = req.body.email;
     }
 
     if (req.body.address) {
@@ -337,12 +372,89 @@ export async function getAllUser(req, res) {
   }
 }
 
+export async function getAllSeller(req, res) {
+  try {
+    const usersWithProducts = await User.aggregate([
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "sellerId",
+          as: "products",
+        },
+      },
+      {
+        $match: {
+          "products.status": "Active", // Match only active products
+        },
+      },
+      {
+        $addFields: {
+          productCount: {
+            $size: {
+              $filter: {
+                input: "$products",
+                as: "product",
+                cond: { $eq: ["$$product.status", "Active"] },
+              },
+            },
+          },
+        },
+      },
+      {
+        $match: {
+          productCount: { $gte: 1 }, // Filter users with at least one active product
+        },
+      },
+      {
+        $project: {
+          products: 0,
+        },
+      },
+    ]);
+    const data = await User.populate(usersWithProducts, [
+      {
+        path: "image",
+        select:
+          "-userType -user -extension -updated -createdAt -updatedAt -size -originalname",
+      },
+      {
+        path: "coverimage",
+        select:
+          "-userType -user -extension -updated -createdAt -updatedAt -size -originalname",
+      },
+    ]);
+
+    const usersWithAverageRating = await Promise.all(
+      usersWithProducts.map(async (user) => {
+        const reviews = await Comments.find({ seller: user._id });
+        const averageRating = calculateRoundedAverageRating(reviews);
+        return { ...user, averageRating };
+      })
+    );
+    res.json(usersWithAverageRating);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
 export async function getUserById(req, res) {
   try {
     const userId = req.params.id;
 
     // Find user by ID in the database
-    const user = await User.findById(userId, { password: 0 })
+    const user = await User.findById(userId, {
+      password: 0,
+      potp: 0,
+      potpExpiration: 0,
+      otpExpiration: 0,
+      otp: 0,
+      createdAt: 0,
+      updatedAt: 0,
+      favSize: 0,
+      shoeSize: 0,
+      favBrand: 0,
+    })
       .populate({
         path: "image",
         select:
@@ -366,10 +478,76 @@ export async function getUserById(req, res) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    const reviews = await Comments.find({
+      seller: userId,
+    });
+    const averageRating = calculateRoundedAverageRating(reviews);
+    user.averageRating = averageRating;
+
     return res.status(200).json({
       message: "Successfully fetched user",
       success: true,
       user,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function getUserBySlug(req, res) {
+  try {
+    const userId = req.params.id;
+    // Find user by ID in the database
+    const user = await User.findOne(
+      { slug: userId },
+      {
+        password: 0,
+        potp: 0,
+        potpExpiration: 0,
+        otpExpiration: 0,
+        otp: 0,
+        createdAt: 0,
+        updatedAt: 0,
+      }
+    )
+      .populate({
+        path: "image",
+        select:
+          "-userType -user -extension -updated -createdAt -updatedAt -size -originalname", // Exclude userType, user, and _id fields
+      })
+      .populate({
+        path: "coverimage",
+        select:
+          "-userType -user -extension -updated -createdAt -updatedAt -size -originalname", // Exclude userType, user, and _id fields
+      })
+      .populate({
+        path: "favBrand",
+      })
+      .populate({
+        path: "shoeSize",
+      })
+      .populate({
+        path: "favSize",
+      })
+      .populate({
+        path: "badges",
+        select: "image",
+        populate: {
+          path: "image",
+          select: "filename title alt",
+        },
+      });
+    if (!user) {
+      return res.status(201).json({ message: "User not found" });
+    }
+    const productLength = await Product.countDocuments({ sellerId: user._id });
+
+    return res.status(200).json({
+      message: "Successfully fetched user",
+      success: true,
+      user,
+      productLength,
     });
   } catch (error) {
     console.error(error);
@@ -423,7 +601,9 @@ export async function changePassword(req, res) {
   try {
     const { oldPassword, newPassword } = req.body;
     const userId = req.params.id; // Assuming you have user authentication middleware setting this
-
+    if (userId !== req.user.userId) {
+      return res.status(404).json({ error: "Authentication Requried" });
+    }
     // Fetch the user from the database
     const user = await User.findById(userId);
     // Compare the old password provided with the stored password hash
@@ -539,5 +719,179 @@ export async function resetPassword(req, res) {
     return res
       .status(500)
       .json({ message: "Server Error", error: error.message });
+  }
+}
+
+export async function updateUserBundleItems(req, res) {
+  try {
+    const { userId, bundleItems } = req.body;
+    if (userId !== req.user.userId) {
+      return res.status(404).json({ error: "Authentication Requried" });
+    }
+    // Find the user by userId
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Update the user's bundleItems in the database
+    user.bundleItems = bundleItems;
+    await user.save();
+
+    return res
+      .status(200)
+      .json({ message: "BundleItems updated successfully" });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Server Error", error: error.message });
+  }
+}
+
+export async function getBundleItemsById(req, res) {
+  try {
+    const id = req.params.id;
+    const bundle = await User.findById(id, "bundleItems").populate({
+      path: "bundleItems",
+      select:
+        "-productSize -colors -conditions -material -totalLikes  -comments -hitCount",
+      populate: [
+        {
+          path: "galleryImages",
+          select:
+            "-userType -user -extension -updated -createdAt -updatedAt -size -originalname",
+        },
+        {
+          path: "category",
+          select: "title",
+        },
+        {
+          path: "brand",
+          select: "title",
+        },
+      ],
+    });
+    if (!bundle) {
+      return res.status(400).send("User Not found");
+    }
+    return res.status(200).json(bundle);
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Server Error", error: error.message });
+  }
+}
+
+export async function updateBundleDiscounts(req, res) {
+  try {
+    const userId = req.params.userId;
+    if (userId !== req.user.userId) {
+      return res.status(404).json({ error: "Authentication Requried" });
+    }
+    if (!userId) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const { bundleDiscounts } = req.body;
+    // Find the user by userId
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const existingKeys = new Set(); // Create a Set to store unique keys
+    for (const discount of bundleDiscounts) {
+      if (existingKeys.has(discount.quantity)) {
+        return res
+          .status(400)
+          .json({ message: "Duplicate keys found in bundleDiscounts" });
+      }
+      existingKeys.add(discount.quantity);
+    }
+
+    // Update the user's bundleItems in the database
+    user.bundleDiscounts = bundleDiscounts;
+    await user.save();
+
+    return res
+      .status(200)
+      .json({ message: "BundleDiscounts updated successfully" });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Server Error", error: error.message });
+  }
+}
+
+export async function getBundleDiscounts(req, res) {
+  try {
+    const userId = req.params.userId;
+
+    const user = await User.findById(userId).select("bundleDiscounts");
+    if (!user) {
+      return res.status(400).send("User not found");
+    }
+    return res.status(200).json(user);
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+export async function getAllUserStatistics(req, res) {
+  try {
+    const { sellerId, rating } = req.params;
+    const { sellerPoints, buyerPoints, ratingsPoint, influencerPoints } =
+      req.body;
+    const user = await User.findById(sellerId);
+    if (!user) {
+      return res.status(400).send("User not found");
+    }
+    const totalSales = await Orders.countDocuments({
+      sellerId,
+      status: "Delivered",
+    });
+    const totalOrders = await Orders.countDocuments({
+      userId: sellerId,
+      status: "Delivered",
+    });
+    const totalRatings = await Comments.countDocuments({
+      seller: sellerId,
+      rating: { $gte: parseInt(rating) },
+      isActive: true,
+      automatic: false,
+    });
+    const totalInfluencers = await Favourite.countDocuments({
+      favoriteType: "Users",
+      item: sellerId,
+    });
+    if (
+      !user.badges.some((badge) => badge.equals("65c7628be3af0ddcaac6e3a0")) &&
+      totalSales >= sellerPoints
+    ) {
+      user.badges.push("65c7628be3af0ddcaac6e3a0");
+    }
+    if (
+      !user.badges.some((badge) => badge.equals("65c755b7ee34ebc6ab06f4cc")) &&
+      totalOrders >= buyerPoints
+    ) {
+      user.badges.push("65c755b7ee34ebc6ab06f4cc");
+    }
+    if (
+      !user.badges.some((badge) => badge.equals("65c7a917fbdbbe8bf7127466")) &&
+      totalRatings >= ratingsPoint
+    ) {
+      user.badges.push("65c7a917fbdbbe8bf7127466");
+    }
+    if (
+      !user.badges.some((badge) => badge.equals("65c7a9f1fbdbbe8bf7127480")) &&
+      totalInfluencers >= influencerPoints
+    ) {
+      user.badges.push("65c7a9f1fbdbbe8bf7127480");
+    }
+
+    await user.save();
+    return res.status(200).json(user);
+  } catch (error) {
+    console.log(error);
   }
 }

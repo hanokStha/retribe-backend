@@ -17,7 +17,7 @@ export const transporter = nodemailer.createTransport({
     // do not fail on invalid certs
     rejectUnauthorized: false,
   },
-});
+}); 
 
 export const handlebarOptions = {
   viewEngine: {

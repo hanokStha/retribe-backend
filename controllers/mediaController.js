@@ -18,6 +18,9 @@ function generateName(fileName) {
 export const uploadImage = async (req, res) => {
   try {
     const { user, userType } = req.body;
+    if (user !== req.user.userId) {
+      return res.status(404).json({ error: "Authentication Requried" });
+    }
     const mediaArray = req.files.media; // Access uploaded files from req.files['media']
     for (const media of mediaArray) {
       const thumbnailFilename = `thumb_${media.filename}`;
@@ -54,6 +57,9 @@ export const uploadImage = async (req, res) => {
 export const getMediaByUser = async (req, res) => {
   try {
     const { user } = req.params; // Assuming userId is passed in the request params
+    if (user !== req.user.userId) {
+      return res.status(404).json({ error: "Authentication Requried" });
+    }
     const { page = 1, limit = 10 } = req.query; // Default to page 1 and 10 items per page
 
     const options = {
@@ -72,6 +78,9 @@ export const getMediaByUser = async (req, res) => {
 
 export const searchMediaQuery = async (req, res) => {
   const user = req.params.userId;
+  if (user !== req.user.userId) {
+    return res.status(404).json({ error: "Authentication Requried" });
+  }
   const searchQuery = req.query.search;
   const extensionQuery = req.query.extension;
   const sortBy = req.query.sortBy; // New sortBy query parameter
@@ -222,6 +231,9 @@ export const updateImageDetails = async (req, res) => {
 
 export const searchMediaByType = async (req, res) => {
   const user = req.params.userId;
+  if (user !== req.user.userId) {
+    return res.status(404).json({ error: "Authentication Requried" });
+  }
   const searchQuery = req.query.search;
   const type = req.query.type;
   const sortBy = req.query.sortBy; // New sortBy query parameter

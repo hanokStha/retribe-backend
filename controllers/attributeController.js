@@ -16,19 +16,21 @@ export const getAttributeById = async (req, res) => {
   const { categoryId } = req.params;
 
   try {
-    const Attribute = await Attribute.findById(categoryId) ;
+    const attribute = await Attribute.findById(categoryId);
 
-    if (!Attribute) {
+    if (!attribute) {
       return res.status(404).json({ message: "Category not found" });
     }
 
-    return res.status(200).json({ Attribute });
+    return res.status(200).json({ attribute });
   } catch (error) {
     return res
       .status(500)
       .json({ message: "Failed to fetch FAQ category", error: error.message });
   }
 };
+
+
 
 export const createAttribute = async (req, res) => {
   const { category } = req.body;

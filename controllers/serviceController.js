@@ -73,7 +73,7 @@ export const getAllService = async (req, res) => {
   try {
     const allService = await Service.find().sort({ createdAt: -1 }).populate({
       path: "image",
-      select: "-userType -user -_id", // Exclude userType, user, and _id fields
+      select: "-userType -user  -updated  -updatedAt  -originalname",
     });
     res.status(200).json(allService);
   } catch (error) {
@@ -85,7 +85,8 @@ export const getAllPublishedService = async (req, res) => {
   try {
     const allService = await Service.find({ status: "Published" }).populate({
       path: "image",
-      select: "-userType -user -_id", // Exclude userType, user, and _id fields
+      select: "-userType -user  -updated  -updatedAt  -originalname",
+
     });
     res.status(200).json(allService);
   } catch (error) {
@@ -97,7 +98,8 @@ export const getServiceById = async (req, res) => {
   try {
     const service = await Service.findOne({ slug: req.params.id }).populate({
       path: "image",
-      select: "-userType -user -_id", // Exclude userType, user, and _id fields
+      select: "-userType -user  -updated  -updatedAt ",
+
     });
     if (!service) {
       res.status(200).json({ message: "Service not found" });

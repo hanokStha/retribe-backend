@@ -1,10 +1,14 @@
 import mongoose, { Schema, model } from "mongoose";
+import mongoosePaginate from "mongoose-paginate-v2";
 
 const userSchema = new Schema(
   {
     name: {
       type: String,
       required: true,
+    },
+    slug: {
+      type: String,
     },
     image: {
       type: mongoose.Schema.Types.ObjectId,
@@ -83,10 +87,40 @@ const userSchema = new Schema(
     holiday: {
       type: Boolean,
     },
+    bundleItems: [{ type: mongoose.Schema.Types.ObjectId, ref: "Products" }],
+    bundleDiscounts: [
+      {
+        quantity: {
+          type: Number,
+        },
+        discount: {
+          type: Number,
+        },
+      },
+    ],
+    averageRating: {
+      type: String,
+    },
+    badges: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Rewards",
+      },
+    ],
+    salesCount: {
+      type: Number,
+      default: 0,
+    },
+    purchaseCount: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
   }
 );
- 
+
+userSchema.plugin(mongoosePaginate);
+
 export default model("Users", userSchema);
