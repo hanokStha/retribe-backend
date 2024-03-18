@@ -159,7 +159,7 @@ const countTotalCartForUsers = async (req, res) => {
     const count = await Cart.countDocuments({ userId });
     return res.status(200).json(count);
   } catch (error) {
-    console.log(error);
+    res.status(500).json(error);
   }
 };
 

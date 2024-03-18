@@ -2,7 +2,11 @@ import { hash, compare } from "bcrypt";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import hbs from "nodemailer-express-handlebars";
-import { handlebarOptions, transporter } from "../config/transporter.js";
+import {
+  handlebarOptions,
+  transporter,
+  resetpw,
+} from "../config/transporter.js";
 import slugify from "slugify";
 import Product from "../models/Product.js";
 import Comments from "../models/Comments.js";
@@ -223,7 +227,7 @@ export async function verifyOTP(req, res) {
 
 export async function resendOTP(req, res) {
   try {
-    const { email } = req.body;
+    const { email, name } = req.body;
 
     // Validate input
     if (!email) {
@@ -250,12 +254,12 @@ export async function resendOTP(req, res) {
 
     transporter.use("compile", hbs(handlebarOptions));
     const mailOptions = {
-      from: "notification@visitktm.com",
+      from: '"Verify you email" <verification@retribestore.com>', // sender address
       template: "email",
       to: req.body.email,
       subject: `Verify your Email - Retribe`,
       context: {
-        name: "Hanok",
+        name: name,
         otp: generatedOTP,
       },
     };
@@ -297,12 +301,12 @@ export async function userLogin(req, res) {
 
       transporter.use("compile", hbs(handlebarOptions));
       const mailOptions = {
-        from: "notification@visitktm.com",
+        from: '"Verify you email" <verification@retribestore.com>', // sender address
         template: "email",
         to: req.body.email,
         subject: `Verify your Email - Retribe`,
         context: {
-          name: "Hanok",
+          name: user.name,
           otp: generatedOTP,
         },
       };
@@ -664,17 +668,18 @@ export async function forgotPassword(req, res) {
     user.potpExpiration = otpExpiration;
     await user.save();
 
-    transporter.use("compile", hbs(handlebarOptions));
+    transporter.use("compile", hbs(resetpw));
     const mailOptions = {
-      from: "notification@visitktm.com",
-      template: "email",
+      from: '"Reset Password" <verification@retribestore.com>', // sender address
+      template: "resetpw",
       to: req.body.email,
-      subject: `Verify your Email - Retribe`,
+      subject: `Reset Password - Retribe`,
       context: {
-        name: "Hanok",
+        name: user.name,
         otp: generatedOTP,
       },
     };
+
     try {
       await transporter.sendMail(mailOptions);
     } catch (error) {
@@ -833,7 +838,7 @@ export async function getBundleDiscounts(req, res) {
     }
     return res.status(200).json(user);
   } catch (error) {
-    console.log(error);
+    res.status(500).json(error);
   }
 }
 
@@ -892,6 +897,6 @@ export async function getAllUserStatistics(req, res) {
     await user.save();
     return res.status(200).json(user);
   } catch (error) {
-    console.log(error);
+    res.status(500).json(error);
   }
 }

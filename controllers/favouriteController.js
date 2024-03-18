@@ -39,9 +39,9 @@ export const addFavourite = async (req, res) => {
 export const getFavouritesByUser = async (req, res) => {
   const userId = req.params.id; // Assuming userId is passed as a parameter
   try {
-    if (userId !== req.user.userId) {
-      return res.status(404).json({ error: "Authentication Requried" });
-    }
+    // if (userId !== req.user.userId) {
+    //   return res.status(404).json({ error: "Authentication Requried" });
+    // }
     const favourites = await Favourite.find(
       { user: userId },
       "-createdAt -updatedAt"
@@ -118,11 +118,10 @@ export const getFavouritesByUser = async (req, res) => {
 
       return roundedRating;
     }
-
-    // Update the favourites array for favoriteType "seller"
+     // Update the favourites array for favoriteType "seller"
     for (const favorite of favourites) {
       if (favorite.favoriteType === "Users") {
-        const sellerId = favorite.item._id;
+        const sellerId = favorite?.item?._id;
         const sellerReviews = await fetchReviewsForSeller(sellerId);
         const productCount = await fetchProductCount(sellerId);
         const sellerRatings = calculateRoundedAverageRating(sellerReviews);
@@ -135,7 +134,7 @@ export const getFavouritesByUser = async (req, res) => {
       .status(201)
       .json({ message: "Favourite fetched successfully", favourites });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+     res.status(500).json({ error: error.message });
   }
 };
 

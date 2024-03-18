@@ -18,7 +18,7 @@ export const getPaymentIntent = async (req, res) => {
       clientSecret: paymentIntent.client_secret,
     });
   } catch (e) {
-    console.log(e);
+    res.status(500).json(error);
   }
 };
 
@@ -28,7 +28,7 @@ export const configPayment = async (req, res) => {
       publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
     });
   } catch (error) {
-    console.log(error);
+    res.status(500).json(error);
   }
 };
 
@@ -45,14 +45,12 @@ export const payment = async (req, res) => {
       return_url: "http://localhost:3000/",
     });
 
-    console.log("Payment", payment);
-    res.json({
+     res.json({
       message: "Payment was successful",
       success: true,
     });
   } catch (error) {
-    console.log("Error", error);
-    res.json({
+     res.json({
       message: "Payment Failed",
       success: false,
     });

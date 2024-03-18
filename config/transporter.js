@@ -17,9 +17,16 @@ export const transporter = nodemailer.createTransport({
     // do not fail on invalid certs
     rejectUnauthorized: false,
   },
-}); 
+});
 
 export const handlebarOptions = {
+  viewEngine: {
+    partialsDir: path.resolve(__dirname, "../email"),
+    defaultLayout: false,
+  },
+  viewPath: path.resolve(__dirname, "../email"),
+};
+export const resetpw = {
   viewEngine: {
     partialsDir: path.resolve(__dirname, "../email"),
     defaultLayout: false,

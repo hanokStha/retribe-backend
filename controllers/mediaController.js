@@ -184,8 +184,7 @@ export const filterMediaExtensions = async (req, res) => {
 
     res.json({ files: paginatedFiles });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: "Server Error" });
+     res.status(500).json({ error: "Server Error" });
   }
 };
 

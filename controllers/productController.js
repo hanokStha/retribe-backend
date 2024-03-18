@@ -108,7 +108,7 @@ export const updateProduct = async (req, res) => {
 };
 
 export const getAllProducts = async (req, res) => {
-  try { 
+  try {
     const { page = 1, limit = 10, sortBy } = req.query;
     const usersWithProducts = await User.find(); // You might want to adjust this based on your actual schema and how users are associated with products.
 
@@ -272,7 +272,7 @@ export const getAllProductsForAdmin = async (req, res) => {
     if (req.query.status) {
       filter.status = req.query.status;
     }
-     const getAllChildCategoryIds = async (categoryId) => {
+    const getAllChildCategoryIds = async (categoryId) => {
       const childCategories = await Category.find({
         parent: categoryId,
       }).select("_id");
@@ -727,7 +727,7 @@ export const verifyProductbyAdmin = async (req, res) => {
       .populate({
         path: "category",
         select: "title",
-      })
+      }) 
       .populate({
         path: "galleryImages",
         select: "thumb",
@@ -750,7 +750,7 @@ export const verifyProductbyAdmin = async (req, res) => {
         await index.deleteObject(updatedProduct._id.toString()); // Remove the product from the index
       }
     } catch (error) {
-      console.log(error);
+      res.status(500).json(error);
     }
 
     return res.json(updatedProduct);

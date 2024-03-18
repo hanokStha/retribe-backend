@@ -10,7 +10,7 @@ import verifyTokenMiddleware from "../middleware/verifyToken.js";
 const router = Router();
 
 router.post("/add", verifyTokenMiddleware, addFavourite);
-router.get("/single/:id", verifyTokenMiddleware, getFavouritesByUser);
+router.get("/single/:id", getFavouritesByUser);
 router.get("/all", verifyTokenMiddleware, getAllFavourites);
 router.post("/remove", verifyTokenMiddleware, removeFavourite);
 
